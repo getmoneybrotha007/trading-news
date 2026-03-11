@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRADING // INTEL</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080a0e;
+    --surface:  #0d1117;
+    --border:   #1a2030;
+    --dim:      #3a4a60;
+    --muted:    #6a7a90;
+    --text:     #c8d8e8;
+    --white:    #eef4ff;
+    --green:    #00e676;
+    --red:      #ff3d5a;
+    --yellow:   #ffd600;
+    --blue:     #00b0ff;
+    --orange:   #ff9100;
+    --purple:   #c77dff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,176,255,0.012) 2px,
+      rgba(0,176,255,0.012) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--white);
+  }
+
+  .logo span { color: var(--blue); }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  #clock {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 1px;
+  }
+
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid var(--blue);
+    color: var(--blue);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    padding: 6px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .refresh-btn:hover { background: var(--blue); color: var(--bg); }
+
+  .main {
+    padding: 24px 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* BIAS ROW */
+  .bias-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .bias-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.3s;
+  }
+
+  .bias-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .bias-card.bull::before { background: var(--green); }
+  .bias-card.bear::before { background: var(--red); }
+  .bias-card.neutral::before { background: var(--yellow); }
+
+  .bias-card.bull { border-color: rgba(0,230,118,0.2); }
+  .bias-card.bear { border-color: rgba(255,61,90,0.2); }
+  .bias-card.neutral { border-color: rgba(255,214,0,0.2); }
+
+  .bias-ticker {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+
+  .bias-price {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--white);
+    margin-bottom: 8px;
+  }
+
+  .bias-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+  }
+
+  .bias-label.bull { color: var(--green); }
+  .bias-label.bear { color: var(--red); }
+  .bias-label.neutral { color: var(--yellow); }
+
+  .bias-change {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neu { color: var(--yellow); }
+
+  /* GRID */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .grid-full { grid-column: 1 / -1; }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: var(--muted);
+  }
+
+  .panel-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--blue);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .panel-body { padding: 20px; }
+
+  /* MARKET ROW */
+  .market-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .market-item {
+    padding: 12px 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+
+  .market-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+  }
+
+  .market-price {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--white);
+  }
+
+  .market-change {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    margin-top: 3px;
+  }
+
+  /* CALENDAR */
+  .event-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .event-row:last-child { border-bottom: none; }
+
+  .event-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    min-width: 60px;
+    padding-top: 2px;
+  }
+
+  .event-impact {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+  }
+
+  .impact-High { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .impact-Medium { background: var(--orange); }
+  .impact-Low { background: var(--dim); }
+
+  .event-info { flex: 1; }
+
+  .event-title {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .event-meta {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .event-meta span { margin-right: 12px; }
+
+  /* NEWS */
+  .news-item {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+
+  .news-item:last-child { border-bottom: none; }
+
+  .news-title {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 4px;
+    transition: color 0.2s;
+  }
+
+  .news-item:hover .news-title { color: var(--blue); }
+
+  .news-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--dim);
+  }
+
+  /* SESSION */
+  .session-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+
+  .session-item {
+    padding: 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .session-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .session-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .session-status {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  .session-active { color: var(--green); }
+  .session-closed { color: var(--dim); }
+
+  /* VIX GAUGE */
+  .vix-row {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .vix-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    line-height: 1;
+    color: var(--white);
+  }
+
+  .vix-info { flex: 1; }
+
+  .vix-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .vix-bar-bg {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .vix-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s;
+  }
+
+  .vix-desc {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* LOADING */
+  .loading {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    padding: 20px 0;
+    text-align: center;
+    letter-spacing: 2px;
+  }
+
+  .no-data {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    padding: 16px 0;
+    text-align: center;
+  }
+
+  /* RECOMMENDATION BOX */
+  .rec-box {
+    padding: 16px 20px;
+    border-left: 3px solid var(--blue);
+    background: rgba(0,176,255,0.05);
+    margin-bottom: 12px;
+  }
+
+  .rec-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--blue);
+    margin-bottom: 6px;
+  }
+
+  .rec-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    border-radius: 2px;
+    margin-right: 6px;
+  }
+
+  .tag-high { background: rgba(255,61,90,0.2); color: var(--red); border: 1px solid rgba(255,61,90,0.3); }
+  .tag-med  { background: rgba(255,145,0,0.2);  color: var(--orange); border: 1px solid rgba(255,145,0,0.3); }
+
+  @media (max-width: 900px) {
+    .bias-row { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .market-grid { grid-template-columns: repeat(2, 1fr); }
+    .session-grid { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">TRADING <span>//</span> INTEL</div>
+  <div class="header-right">
+    <div id="clock">--:--:-- CT</div>
+    <button class="refresh-btn" onclick="loadAll()">⟳ REFRESH</button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- BIAS ROW -->
+  <div class="bias-row" id="bias-row">
+    <div class="bias-card neutral"><div class="loading">LOADING...</div></div>
+    <div class="bias-card neutral"><div class="loading">LOADING...</div></div>
+    <div class="bias-card neutral"><div class="loading">LOADING...</div></div>
+    <div class="bias-card neutral"><div class="loading">LOADING...</div></div>
+  </div>
+
+  <!-- TOP GRID -->
+  <div class="grid">
+
+    <!-- MARKET DATA -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">MARKET OVERVIEW</div>
+        <div class="panel-dot"></div>
+      </div>
+      <div class="panel-body">
+        <div class="market-grid" id="market-grid">
+          <div class="loading" style="grid-column:1/-1">LOADING...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIX + SESSION -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">VOLATILITY + SESSIONS</div>
+        <div class="panel-dot"></div>
+      </div>
+      <div class="panel-body">
+        <div class="vix-row" id="vix-row" style="margin-bottom:20px">
+          <div class="loading">LOADING...</div>
+        </div>
+        <div class="session-grid" id="session-grid"></div>
+      </div>
+    </div>
+
+    <!-- ECONOMIC CALENDAR -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">ECONOMIC CALENDAR — TODAY</div>
+        <div class="panel-dot"></div>
+      </div>
+      <div class="panel-body" id="calendar-body">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- DAILY RECOMMENDATION -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">DAILY BIAS REPORT</div>
+        <div class="panel-dot"></div>
+      </div>
+      <div class="panel-body" id="rec-body">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+    <!-- NEWS -->
+    <div class="panel grid-full">
+      <div class="panel-header">
+        <div class="panel-title">MARKET HEADLINES</div>
+        <div class="panel-dot"></div>
+      </div>
+      <div class="panel-body" id="news-body">
+        <div class="loading">LOADING...</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const BASE = '';
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  const ct = new Date(now.toLocaleString('en-US', {timeZone: 'America/Chicago'}));
+  const h = String(ct.getHours()).padStart(2,'0');
+  const m = String(ct.getMinutes()).padStart(2,'0');
+  const s = String(ct.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}:${s} CT`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// Sessions
+function renderSessions() {
+  const now = new Date();
+  const sessions = [
+    { name: 'ASIAN',   start: 18, end: 2,  tz: 'Tokyo' },
+    { name: 'LONDON',  start: 2,  end: 8,  tz: 'London' },
+    { name: 'NEW YORK',start: 8,  end: 17, tz: 'New York' }
+  ];
+  const nyHour = parseInt(new Date(now.toLocaleString('en-US', {timeZone: 'America/New_York'})).getHours());
+  const grid = document.getElementById('session-grid');
+  grid.innerHTML = sessions.map(s => {
+    let active = false;
+    if (s.start < s.end) {
+      active = nyHour >= s.start && nyHour < s.end;
+    } else {
+      active = nyHour >= s.start || nyHour < s.end;
+    }
+    return `
+      <div class="session-item">
+        <div class="session-name">${s.name}</div>
+        <div class="session-time">${s.start}:00 – ${s.end}:00 ET</div>
+        <div class="session-status ${active ? 'session-active' : 'session-closed'}">${active ? '● ACTIVE' : '○ CLOSED'}</div>
+      </div>
+    `;
+  }).join('');
+}
+renderSessions();
+setInterval(renderSessions, 60000);
+
+const FINNHUB_KEY = 'd6omlihr01qi5kh3heg0d6omlihr01qi5kh3hegg';
+
+// Finnhub symbol map — using ETF proxies since free tier doesn't support futures
+// QQQ tracks NQ/MNQ, SPY tracks ES/MES, GLD tracks GC/MGC, USO tracks CL/MCL
+const FINNHUB_MAP = {
+  MNQ: { sym: 'QQQ',  label: 'QQQ (NQ Proxy)',   mult: 1 },
+  MES: { sym: 'SPY',  label: 'SPY (ES Proxy)',    mult: 1 },
+  MGC: { sym: 'GLD',  label: 'GLD (Gold Proxy)',  mult: 1 },
+  MCL: { sym: 'USO',  label: 'USO (Oil Proxy)',   mult: 1 },
+  VIX: { sym: 'UVXY', label: 'UVXY (VIX Proxy)',  mult: 1 },
+  DXY: { sym: 'UUP',  label: 'UUP (Dollar ETF)',  mult: 1 },
+};
+
+async function fetchQuotes() {
+  const result = {};
+  const fetches = Object.entries(FINNHUB_MAP).map(async ([name, cfg]) => {
+    try {
+      const url = `https://finnhub.io/api/v1/quote?symbol=${cfg.sym}&token=${FINNHUB_KEY}`;
+      const r = await fetch(url);
+      const q = await r.json();
+      const price = q.c || 0;
+      const prev  = q.pc || price;
+      if (price > 0) {
+        const chg     = price - prev;
+        const chg_pct = prev > 0 ? (chg / prev * 100) : 0;
+        result[name] = {
+          price:      Math.round(price * 100) / 100,
+          change:     Math.round(chg * 100) / 100,
+          change_pct: Math.round(chg_pct * 100) / 100,
+          day_high:   q.h || price,
+          day_low:    q.l  || price,
+          open:       q.o  || price,
+          label:      cfg.label
+        };
+      }
+    } catch(e) {}
+  });
+  await Promise.all(fetches);
+  return result;
+}
+
+// Market data
+async function loadMarket() {
+  const data = await fetchQuotes();
+  const instruments = ['MNQ','MES','MGC','MCL','VIX','DXY'];
+  const labels = { MNQ:'QQQ / NQ PROXY', MES:'SPY / ES PROXY', MGC:'GLD / GOLD PROXY', MCL:'USO / OIL PROXY', VIX:'UVXY / VIX', DXY:'UUP / DOLLAR' };
+  const grid = document.getElementById('market-grid');
+
+  if (Object.keys(data).length === 0) {
+    grid.innerHTML = '<div class="no-data" style="grid-column:1/-1">Market closed or data unavailable</div>';
+    document.getElementById('vix-row').innerHTML = '<div class="no-data">VIX unavailable</div>';
+    return {};
+  }
+
+  grid.innerHTML = instruments.map(k => {
+    const d = data[k];
+    if (!d || !d.price) return `<div class="market-item"><div class="market-name">${labels[k]||k}</div><div class="market-price">--</div></div>`;
+    const chg = d.change_pct;
+    const cls = chg > 0 ? 'pos' : chg < 0 ? 'neg' : 'neu';
+    const sign = chg > 0 ? '+' : '';
+    return `
+      <div class="market-item">
+        <div class="market-name">${labels[k] || k}</div>
+        <div class="market-price">${d.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        <div class="market-change ${cls}">${sign}${chg.toFixed(2)}%</div>
+      </div>
+    `;
+  }).join('');
+
+  // VIX gauge
+  const vix = data['VIX'];
+  if (vix && vix.price) {
+    const v = vix.price;
+    const pct = Math.min(v / 50 * 100, 100);
+    const color = v < 15 ? '#00e676' : v < 20 ? '#ffd600' : v < 30 ? '#ff9100' : '#ff3d5a';
+    const desc = v < 15 ? 'LOW VOLATILITY — CALM MARKET' : v < 20 ? 'NORMAL VOLATILITY' : v < 30 ? 'ELEVATED — TRADE WITH CARE' : 'HIGH FEAR — REDUCE SIZE';
+    document.getElementById('vix-row').innerHTML = `
+      <div class="vix-number" style="color:${color}">${v.toFixed(1)}</div>
+      <div class="vix-info">
+        <div class="vix-label">CBOE VIX — FEAR INDEX</div>
+        <div class="vix-bar-bg"><div class="vix-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="vix-desc">${desc}</div>
+      </div>
+    `;
+  } else {
+    document.getElementById('vix-row').innerHTML = '<div class="no-data">VIX unavailable</div>';
+  }
+
+  return data;
+}
+
+// Bias — computed client-side from same quote data
+async function loadBias() {
+  const data = await fetchQuotes();
+  const keys = ['MNQ','MES','MGC','MCL'];
+  const row = document.getElementById('bias-row');
+  const biasData = {};
+
+  row.innerHTML = keys.map(k => {
+    const d = data[k];
+    if (!d || !d.price) {
+      biasData[k] = { bias: 'NO DATA', change_pct: 0 };
+      return `<div class="bias-card neutral"><div class="bias-ticker">${k}</div><div class="bias-price">--</div><div class="bias-label neutral">— NO DATA</div><div class="bias-change neu">0.00% today</div></div>`;
+    }
+    const chg_pct = d.change_pct;
+    const bias    = chg_pct > 0.3 ? 'BULLISH' : chg_pct < -0.3 ? 'BEARISH' : 'NEUTRAL';
+    const cls     = bias === 'BULLISH' ? 'bull' : bias === 'BEARISH' ? 'bear' : 'neutral';
+    const arrow   = bias === 'BULLISH' ? '▲' : bias === 'BEARISH' ? '▼' : '—';
+    const sign    = chg_pct > 0 ? '+' : '';
+    biasData[k]   = { bias, change_pct: chg_pct };
+    return `
+      <div class="bias-card ${cls}">
+        <div class="bias-ticker">${k}</div>
+        <div class="bias-price">${d.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+        <div class="bias-label ${cls}">${arrow} ${bias}</div>
+        <div class="bias-change ${chg_pct > 0 ? 'pos' : chg_pct < 0 ? 'neg' : 'neu'}">${sign}${chg_pct.toFixed(2)}% today</div>
+      </div>
+    `;
+  }).join('');
+
+  return biasData;
+}
+
+// Calendar
+async function loadCalendar() {
+  try {
+    const r = await fetch(`${BASE}/api/calendar`);
+    const data = await r.json();
+    const body = document.getElementById('calendar-body');
+    if (!data.events || data.events.length === 0) {
+      body.innerHTML = '<div class="no-data">No high-impact events today</div>';
+      return [];
+    }
+    body.innerHTML = data.events.map(e => {
+      const t = new Date(e.time);
+      const timeStr = isNaN(t) ? e.time : t.toLocaleTimeString('en-US', {hour:'2-digit', minute:'2-digit', timeZone:'America/Chicago'});
+      return `
+        <div class="event-row">
+          <div class="event-time">${timeStr} CT</div>
+          <div class="event-impact impact-${e.impact}"></div>
+          <div class="event-info">
+            <div class="event-title">${e.event}</div>
+            <div class="event-meta">
+              <span class="tag tag-${e.impact === 'High' ? 'high' : 'med'}">${e.impact.toUpperCase()}</span>
+              ${e.forecast ? `<span>Forecast: ${e.forecast}</span>` : ''}
+              ${e.previous ? `<span>Prev: ${e.previous}</span>` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    return data.events;
+  } catch(e) {
+    document.getElementById('calendar-body').innerHTML = '<div class="no-data">Failed to load calendar</div>';
+    return [];
+  }
+}
+
+// News via Finnhub
+async function loadNews() {
+  try {
+    const url = `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_KEY}`;
+    const r = await fetch(url);
+    const data = await r.json();
+    const body = document.getElementById('news-body');
+
+    if (!data || data.length === 0) {
+      body.innerHTML = '<div class="no-data">No headlines available</div>';
+      return;
+    }
+
+    const items = data.slice(0, 20);
+    const half  = Math.ceil(items.length / 2);
+    const left  = items.slice(0, half);
+    const right = items.slice(half);
+    body.style.display = 'grid';
+    body.style.gridTemplateColumns = '1fr 1fr';
+    body.style.gap = '0 32px';
+    body.innerHTML = `
+      <div>${left.map(h => newsItem(h)).join('')}</div>
+      <div>${right.map(h => newsItem(h)).join('')}</div>
+    `;
+  } catch(e) {
+    document.getElementById('news-body').innerHTML = '<div class="no-data">Failed to load news</div>';
+  }
+}
+
+function newsItem(h) {
+  const d = h.datetime ? new Date(h.datetime * 1000) : new Date(h.date);
+  const dateStr = isNaN(d) ? '' : d.toLocaleString('en-US', {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+  const title = h.headline || h.title || '';
+  const link  = h.url || h.link || '#';
+  const src   = h.source || '';
+  return `
+    <div class="news-item" onclick="window.open('${link}','_blank')">
+      <div class="news-title">${title}</div>
+      <div class="news-date">${src ? src + ' · ' : ''}${dateStr}</div>
+    </div>
+  `;
+}
+
+// Daily recommendation
+async function buildRecommendation(biasData, calendarEvents, marketData) {
+  const body = document.getElementById('rec-body');
+  const recs = [];
+
+  // VIX check
+  const vixPrice = marketData?.VIX?.price || 0;
+  if (vixPrice > 25) {
+    recs.push({ title: '⚠ HIGH VOLATILITY DAY', text: `VIX at ${vixPrice.toFixed(1)} — reduce position size, widen stops mentally, expect larger swings. Only take A+ setups.`, type: 'high' });
+  } else if (vixPrice > 0 && vixPrice < 15) {
+    recs.push({ title: 'LOW VOLATILITY DAY', text: `VIX at ${vixPrice.toFixed(1)} — expect smaller ranges. ATR-based targets may not fully hit. Consider taking partial profits earlier.`, type: 'med' });
+  }
+
+  // Calendar events
+  const highImpact = calendarEvents.filter(e => e.impact === 'High');
+  if (highImpact.length > 0) {
+    recs.push({ title: `🔴 ${highImpact.length} HIGH IMPACT EVENT${highImpact.length > 1 ? 'S' : ''} TODAY`, text: `${highImpact.map(e => e.event).join(', ')}. Avoid trading 15 min before and after these events. Expect spike and reversal.`, type: 'high' });
+  }
+
+  // Bias summary — only if we have real data
+  const bulls = Object.entries(biasData).filter(([k,v]) => v?.bias === 'BULLISH').map(([k]) => k);
+  const bears = Object.entries(biasData).filter(([k,v]) => v?.bias === 'BEARISH').map(([k]) => k);
+  const hasData = Object.values(biasData).some(v => v?.bias !== 'NO DATA');
+
+  if (!hasData) {
+    recs.push({ title: 'MARKET DATA UNAVAILABLE', text: 'Prices not loading — market may be closed or outside trading hours. Check back at 8:00 AM CT before the open.', type: 'med' });
+  } else if (bulls.length >= 3) {
+    recs.push({ title: 'BROAD BULL BIAS', text: `${bulls.join(', ')} all showing bullish bias today. Favor long signals. Be selective on shorts — only take them at clear resistance with strong momentum.`, type: 'med' });
+  } else if (bears.length >= 3) {
+    recs.push({ title: 'BROAD BEAR BIAS', text: `${bears.join(', ')} all showing bearish bias today. Favor short signals. Be selective on longs — only take them at clear support.`, type: 'med' });
+  } else if (bulls.length > 0 && bears.length > 0) {
+    recs.push({ title: 'MIXED BIAS — CHOPPY CONDITIONS', text: `Market is split — ${bulls.join(', ')} bullish, ${bears.join(', ')} bearish. Expect chop. Be more selective. Wait for high confluence setups only.`, type: 'high' });
+  }
+
+  // Always show calendar summary even if no market data
+  if (calendarEvents.length === 0) {
+    recs.push({ title: 'CLEAN CALENDAR', text: 'No high-impact events scheduled today. Normal trading conditions — follow bot signals with standard confluence checks.', type: 'med' });
+  }
+
+  if (recs.length === 0) {
+    recs.push({ title: 'NEUTRAL CONDITIONS', text: 'No major events or bias extremes detected. Normal trading conditions. Follow the bot signals with your standard confluence checks.', type: 'med' });
+  }
+
+  body.innerHTML = recs.map(r => `
+    <div class="rec-box">
+      <div class="rec-title">${r.title}</div>
+      <div class="rec-text">${r.text}</div>
+    </div>
+  `).join('');
+}
+
+// Load all
+async function loadAll() {
+  const [biasData, calendarEvents, marketData] = await Promise.all([
+    loadBias(),
+    loadCalendar(),
+    loadMarket()
+  ]);
+  await loadNews();
+  await buildRecommendation(biasData, calendarEvents, marketData);
+}
+
+loadAll();
+// Auto refresh every 5 minutes
+setInterval(loadAll, 5 * 60 * 1000);
+</script>
+</body>
+</html>
